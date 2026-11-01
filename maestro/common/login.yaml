@@ -1,0 +1,11 @@
+# 역할별 로그인. QA_ID / QA_PW 는 scripts/run.js 가 시나리오 역할에 맞춰 넘긴다.
+# TODO(프론트): 실제 로그인 화면의 문구나 testTag 로 아래 글자를 바꾼다.
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- tapOn: "아이디"
+- inputText: ${QA_ID}
+- tapOn: "비밀번호"
+- inputText: ${QA_PW}
+- tapOn: "로그인"

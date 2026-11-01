@@ -1,0 +1,5 @@
+node_modules/
+maestro/.generated/
+.out/
+*.apk
+*.zip

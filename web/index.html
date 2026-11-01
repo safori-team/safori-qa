@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Safori QA 콘솔</title>
+<style>
+:root {
+  --bg: #f3f5f4; --surface: #fff; --sunk: #e7ecea; --fg: #17201d; --muted: #5b6863; --line: #d3dbd8;
+  --accent: #0f6b5c; --accent-soft: #dcefe9; --pass: #1d7a3e; --pass-soft: #e0f2e6; --fail: #b3261e; --fail-soft: #fbe3e1;
+  --warn: #8a5a00; --warn-soft: #fbefd5; --idle: #6b7280; --idle-soft: #eceef1;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111715; --surface: #18201d; --sunk: #0d1311; --fg: #e4ebe8; --muted: #93a29c; --line: #2b3632;
+    --accent: #4fc2a9; --accent-soft: #173a32; --pass: #6fd38f; --pass-soft: #163423; --fail: #ff8a80; --fail-soft: #3d1a17;
+    --warn: #f2c063; --warn-soft: #3a2c10; --idle: #a3aab4; --idle-soft: #262b31; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+h2, h3, p { margin: 0; line-height: 1.3; } h2 { font-size: 1.15rem; } h3 { font-size: 1rem; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 48px; }
+.muted { color: var(--muted); }
+.app { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.appbar { padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 700; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--bg); font-size: .88rem; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); min-height: 520px; }
+.list { border-right: 1px solid var(--line); min-width: 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; align-items: center; }
+.grow { flex: 1; }
+select, input, textarea { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+.btn { font: inherit; font-weight: 500; border-radius: 8px; padding: 7px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.scroll { overflow-x: auto; border-top: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: .8rem; background: var(--sunk); white-space: nowrap; }
+tr[data-id] { cursor: pointer; } tr[data-id]:hover td { background: var(--bg); } tr[aria-selected="true"] td { background: var(--accent-soft); }
+.pill { display: inline-block; font-size: .76rem; font-weight: 500; padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
+.r-통과 { background: var(--pass-soft); color: var(--pass); } .r-실패 { background: var(--fail-soft); color: var(--fail); }
+.r-형식오류, .s-초안 { background: var(--warn-soft); color: var(--warn); } .r-미실행, .s-중지 { background: var(--idle-soft); color: var(--idle); }
+.s-검증됨 { background: var(--accent-soft); color: var(--accent); }
+.panel { padding: 18px; display: grid; gap: 16px; align-content: start; min-width: 0; }
+.head { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+.stack { display: grid; gap: 8px; min-width: 0; }
+pre { margin: 0; font: .84rem/1.55 Consolas, ui-monospace, monospace; background: var(--sunk); border-radius: 8px; padding: 12px; overflow-x: auto; }
+.failbox { border-left: 3px solid var(--fail); background: var(--fail-soft); padding: 10px 12px; font-size: .88rem; }
+.shot { max-width: 180px; border-radius: 10px; border: 1px solid var(--line); }
+.runs > div { display: grid; grid-template-columns: 8.5em 4.5em minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: .86rem; }
+.form { display: grid; gap: 14px; } .field { display: grid; gap: 6px; } .field label { font-size: .85rem; font-weight: 500; }
+textarea { font-family: Consolas, ui-monospace, monospace; font-size: .86rem; min-height: 190px; resize: vertical; }
+.hint { font-size: .8rem; color: var(--muted); } .ok { color: var(--pass); } .err { color: var(--fail); }
+.check { font-size: .85rem; display: grid; gap: 4px; } .actions { display: flex; gap: 8px; }
+.login { max-width: 340px; margin: 12vh auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: grid; gap: 12px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 20px; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: .88rem; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr); } .list { border-right: 0; border-bottom: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<form class="login" id="login" hidden>
+  <h2>Safori QA 콘솔</h2>
+  <label for="pw" class="muted">팀 공용 비밀번호</label>
+  <input id="pw" type="password" autocomplete="current-password" required>
+  <span class="err" id="login-err"></span>
+  <button class="btn primary">로그인</button>
+</form>
+<div class="wrap" id="main" hidden>
+  <div class="app">
+    <div class="appbar">Safori QA</div>
+    <div class="summary" id="summary"></div>
+    <div class="cols">
+      <div class="list">
+        <div class="filters">
+          <select id="f-role" aria-label="역할 필터"><option value="">모든 역할</option><option>어르신</option><option>보호자</option><option>관리자</option></select>
+          <select id="f-status" aria-label="상태 필터"><option value="">모든 상태</option><option>검증됨</option><option>초안</option><option>중지</option></select>
+          <span class="grow"></span>
+          <button class="btn primary" id="btn-new">새 시나리오</button>
+        </div>
+        <div class="scroll"><table>
+          <thead><tr><th>시나리오</th><th>역할</th><th>상태</th><th>마지막 결과</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table></div>
+      </div>
+      <div class="panel" id="panel"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script type="module">
+import { parseSteps, toYaml } from '/steps.js';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const when = iso => iso ? new Date(iso).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+const by = () => { try { return localStorage.getItem('qa-by') ?? ''; } catch { return ''; } };
+let scenarios = [], selected = null, editing = false, tt;
+
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 3200); }
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { 'content-type': 'application/json' } });
+  if (res.status === 401 && path !== '/api/login') { showLogin(); throw new Error('로그인이 필요해요'); }
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.message);
+  return body;
+}
+function showLogin() { $('#main').hidden = true; $('#login').hidden = false; }
+async function load() {
+  scenarios = await api('/api/scenarios');
+  $('#login').hidden = true; $('#main').hidden = false;
+  if (!scenarios.some(s => s.id === selected)) selected = scenarios[0]?.id ?? null;
+  renderAll();
+}
+function renderSummary() {
+  const v = scenarios.filter(s => s.status === '검증됨'), c = r => v.filter(s => s.lastResult === r).length;
+  const n = st => scenarios.filter(s => s.status === st).length;
+  $('#summary').innerHTML = `<span>검증됨 <b>${v.length}</b>개 중 통과 <b>${c('통과')}</b> · 실패 <b>${c('실패')}</b></span><span class="muted">초안 <b>${n('초안')}</b> · 중지 <b>${n('중지')}</b></span>`;
+}
+function renderRows() {
+  const fr = $('#f-role').value, fs = $('#f-status').value;
+  const list = scenarios.filter(s => (!fr || s.role === fr) && (!fs || s.status === fs));
+  $('#rows').innerHTML = list.map(s => `<tr data-id="${s.id}" tabindex="0" aria-selected="${s.id === selected && !editing}">
+    <td>${esc(s.name)}</td><td>${esc(s.role)}</td><td><span class="pill s-${esc(s.status)}">${esc(s.status)}</span></td>
+    <td><span class="pill r-${esc(s.lastResult)}">${esc(s.lastResult)}</span></td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">시나리오가 없어요. 새 시나리오를 눌러 첫 시나리오를 등록해 보세요.</td></tr>';
+}
+async function renderDetail() {
+  const s = scenarios.find(x => x.id === selected);
+  if (!s) { $('#panel').innerHTML = '<p class="muted">왼쪽에서 시나리오를 고르거나 새로 만들어 보세요.</p>'; return; }
+  $('#panel').innerHTML = `
+    <div class="head"><div class="stack"><h2>${esc(s.name)}</h2><div><span class="pill s-${esc(s.status)}">${esc(s.status)}</span> <span class="pill r-${esc(s.lastResult)}">${esc(s.lastResult)}</span></div></div>
+      <button class="btn" id="btn-edit">수정</button></div>
+    <p class="muted">${esc(s.role)} · ${esc(s.updatedBy)} · ${when(s.updatedAt)}</p>
+    <div id="fail"></div>
+    <div class="stack"><h3>단계</h3><pre>${esc(s.steps)}</pre></div>
+    <div class="stack"><h3>실행 이력</h3><div class="runs" id="runs"><span class="muted">불러오는 중…</span></div></div>`;
+  $('#btn-edit').onclick = () => openForm(s);
+  const runs = await api(`/api/scenarios/${s.id}/runs`);
+  if (selected !== s.id || editing) return;
+  $('#runs').innerHTML = runs.map(r => `<div><span class="muted">${when(r.ranAt)}</span><span><span class="pill r-${esc(r.result)}">${esc(r.result)}</span></span><span class="muted">${esc(r.message)}</span></div>`).join('') || '<span class="muted">아직 실행되지 않았어요</span>';
+  const l = runs[0];
+  if (l && l.result !== '통과') $('#fail').innerHTML = `<div class="stack">${l.screenshotKey ? `<img class="shot" alt="실패 시점 화면" src="/api/shots/${esc(l.screenshotKey)}">` : ''}<div class="failbox"><b>${esc(l.result)}</b> ${esc(l.message)}</div></div>`;
+}
+function openForm(s) {
+  editing = true; renderRows();
+  $('#panel').innerHTML = `
+    <h2>${s ? '시나리오 수정' : '새 시나리오'}</h2>
+    <form class="form" id="form">
+      <div class="field"><label for="in-name">이름</label><input id="in-name" required value="${esc(s?.name)}" placeholder="예: 보호자 주간 리포트 확인"></div>
+      <div class="field"><label for="in-by">수정자</label><input id="in-by" required value="${esc(by())}" placeholder="예: 김기획"></div>
+      <div class="field"><label for="in-steps">단계</label>
+        <textarea id="in-steps" spellcheck="false">${esc(s?.steps ?? '로그인 보호자\n')}</textarea>
+        <span class="hint">한 줄에 한 동작: 로그인 · 누르기 · 보임 · 안보임 · 입력 · 기다리기 · 스크롤 · 뒤로</span>
+        <div class="check" id="check" aria-live="polite"></div></div>
+      <div class="field"><label for="in-status">상태</label>
+        <select id="in-status"><option>초안</option><option ${s?.status === '중지' ? 'selected' : ''}>중지</option></select>
+        <span class="hint">다음 실행에서 통과하면 검증됨으로 바뀌어요. 검증됨 시나리오의 단계를 고치면 초안으로 돌아가요.</span></div>
+      <details><summary class="hint">변환된 Maestro YAML 보기</summary><pre id="yaml"></pre></details>
+      <div class="actions"><button class="btn primary" id="btn-save">저장</button><button class="btn" type="button" id="btn-cancel">취소</button></div>
+    </form>`;
+  const check = () => {
+    const r = parseSteps($('#in-steps').value);
+    $('#check').innerHTML = r.errors.length ? r.errors.map(e => `<span class="err">${esc(e)}</span>`).join('') : `<span class="ok">형식이 맞아요 · 역할 ${r.role}</span>`;
+    $('#yaml').textContent = r.errors.length ? '형식 오류를 고치면 여기에 표시돼요' : toYaml($('#in-name').value, r.steps);
+    $('#btn-save').disabled = r.errors.length > 0;
+  };
+  $('#in-steps').oninput = check; $('#in-name').oninput = check; check();
+  $('#btn-cancel').onclick = () => { editing = false; renderAll(); };
+  $('#form').onsubmit = async e => {
+    e.preventDefault();
+    const name = $('#in-by').value.trim();
+    try { localStorage.setItem('qa-by', name); } catch {}
+    const body = JSON.stringify({ name: $('#in-name').value, steps: $('#in-steps').value, status: $('#in-status').value, updatedBy: name, baseUpdatedAt: s?.updatedAt });
+    try {
+      const saved = await api(s ? `/api/scenarios/${s.id}` : '/api/scenarios', { method: s ? 'PUT' : 'POST', body });
+      editing = false; selected = saved.id; await load(); toast('저장했어요');
+    } catch (err) { toast(err.message); }
+  };
+}
+function renderAll() { renderSummary(); renderRows(); renderDetail().catch(e => toast(e.message)); }
+
+$('#rows').addEventListener('click', e => { const tr = e.target.closest('tr[data-id]'); if (!tr) return; selected = +tr.dataset.id; editing = false; renderRows(); renderDetail().catch(er => toast(er.message)); });
+$('#rows').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.closest('tr[data-id]')?.click(); });
+$('#f-role').onchange = renderRows; $('#f-status').onchange = renderRows;
+$('#btn-new').onclick = () => openForm(null);
+$('#login').onsubmit = async e => {
+  e.preventDefault();
+  try {
+    await api('/api/login', { method: 'POST', body: JSON.stringify({ password: $('#pw').value }) });
+    $('#pw').value = ''; $('#login-err').textContent = ''; await load();
+  } catch (err) { $('#login-err').textContent = err.message; }
+};
+load().catch(() => {});
+</script>
+</body>
+</html>

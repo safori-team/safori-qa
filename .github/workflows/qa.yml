@@ -1,0 +1,77 @@
+name: qa
+
+# public 레포 규칙: pull_request 트리거를 쓰지 않는다. 외부 PR 이 secrets 나 AWS role 에 닿으면 안 된다.
+on:
+  schedule:
+    - cron: "10 17 * * *" # 매일 02:10 KST
+  workflow_dispatch:
+  repository_dispatch:
+    types: [apk-uploaded]
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+concurrency:
+  group: qa
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      AWS_REGION: ap-northeast-2
+      QA_BUCKET: ${{ secrets.QA_BUCKET }}
+      QA_ACCOUNTS: ${{ secrets.QA_ACCOUNTS }}
+      QA_APP_ID: ${{ secrets.QA_APP_ID }}
+      APK_VERSION: ${{ github.event.client_payload.apk_version || 'latest' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - run: npm ci
+
+      - run: gh label create qa-fail --force --color B60205
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download APK
+        run: aws s3 cp "s3://$QA_BUCKET/apk/latest.apk" app.apk --no-progress --only-show-errors
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run scenarios on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb install -r app.apk
+            node scripts/run.js
