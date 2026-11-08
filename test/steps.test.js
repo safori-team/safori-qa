@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSteps, toYaml, nextStatus } from '../shared/steps.js';
+import { APP_IDS, parseSteps, toYaml, nextStatus } from '../shared/steps.js';
 
 test('모든 동사를 Maestro 명령으로 바꾼다', () => {
   const r = parseSteps('# 메모\n로그인 어르신\n누르기 "일기"\n입력 "메모" "안녕"\n기다리기 "분석 완료" 30\n안보임 "오류"\n스크롤\n뒤로');
   assert.deepEqual(r.errors, []);
   assert.equal(r.role, '어르신');
-  const y = toYaml('t', r.steps, 'a.b');
-  for (const s of ['appId: "a.b"', 'file: "../common/login.yaml"', '- tapOn: "일기"', '- inputText: "안녕"', 'timeout: 30000', '- assertNotVisible: "오류"', '- scroll', '- back'])
+  const y = toYaml('t', r.steps, APP_IDS[r.role]);
+  for (const s of ['appId: "com.safori.app.dev"', 'file: "../common/login.yaml"', '- tapOn: "일기"', '- inputText: "안녕"', 'timeout: 30000', '- assertNotVisible: "오류"', '- scroll', '- back'])
     assert.ok(y.includes(s), s);
 });
 

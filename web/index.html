@@ -91,7 +91,7 @@ textarea { font-family: Consolas, ui-monospace, monospace; font-size: .86rem; mi
 </div>
 <div class="toast" id="toast" hidden></div>
 <script type="module">
-import { parseSteps, toYaml } from '/steps.js';
+import { APP_IDS, parseSteps, toYaml } from '/steps.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -165,7 +165,7 @@ function openForm(s) {
   const check = () => {
     const r = parseSteps($('#in-steps').value);
     $('#check').innerHTML = r.errors.length ? r.errors.map(e => `<span class="err">${esc(e)}</span>`).join('') : `<span class="ok">형식이 맞아요 · 역할 ${r.role}</span>`;
-    $('#yaml').textContent = r.errors.length ? '형식 오류를 고치면 여기에 표시돼요' : toYaml($('#in-name').value, r.steps);
+    $('#yaml').textContent = r.errors.length ? '형식 오류를 고치면 여기에 표시돼요' : toYaml($('#in-name').value, r.steps, APP_IDS[r.role]);
     $('#btn-save').disabled = r.errors.length > 0;
   };
   $('#in-steps').oninput = check; $('#in-name').oninput = check; check();

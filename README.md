@@ -22,7 +22,13 @@ Safori 안드로이드 앱의 실제 사용 흐름을 자동으로 확인하는 
 
 ### 단계 쓰는 법
 
-첫 줄은 항상 로그인입니다. 시나리오의 역할도 이 줄로 정해집니다.
+첫 줄은 항상 로그인입니다. 시나리오의 역할과 앱이 이 줄로 정해집니다.
+
+| 역할 | 실행하는 앱 | 테스트 계정 |
+|---|---|---|
+| 어르신 | 사포리 | 어르신 |
+| 보호자 | 사포리 관리자 | 보호자 |
+| 관리자 | 사포리 관리자 | 담당자 |
 
 ```text
 로그인 보호자
@@ -104,7 +110,8 @@ S3 키는 다음과 같습니다.
 | `scenarios.json` | 시나리오 전체와 마지막 결과 |
 | `runs/{id}.json` | 시나리오별 실행 이력 (최근 50건) |
 | `screenshots/{id}/*.png` | 실패 스크린샷 (30일 뒤 자동 삭제) |
-| `apk/latest.apk` | 테스트할 APK |
+| `apk/user.apk` | 사포리 앱 (`user-dev` 빌드) |
+| `apk/care.apk` | 사포리 관리자 앱 (`care-dev` 빌드) |
 
 ### 로컬 테스트
 
@@ -123,8 +130,7 @@ npm ci && npm test
    |---|---|
    | `AWS_ROLE_TO_ASSUME` | `qa_ci_role_arn` 값 |
    | `QA_BUCKET` | `qa_bucket` 값 |
-   | `QA_APP_ID` | 안드로이드 applicationId |
-   | `QA_ACCOUNTS` | `{"어르신":{"id":"...","pw":"..."},"보호자":{...},"관리자":{...}}` |
+   | `QA_ACCOUNTS` | `{"어르신":{"id":"...","pw":"..."},"보호자":{...},"관리자":{...}}` (관리자 = 담당자 계정) |
 
 3. Actions에서 `deploy` 워크플로우를 수동 실행해 Lambda 코드를 배포합니다.
 4. 콘솔 비밀번호를 정합니다. 이 명령은 Lambda 환경변수를 통째로 바꾸므로 `QA_BUCKET`도 같이 넣어야 합니다.
@@ -135,16 +141,16 @@ npm ci && npm test
 
    비밀번호는 Lambda 콘솔에서 확인해 팀에 공유합니다. 설정 전에는 아무도 로그인할 수 없습니다.
 
-5. `maestro/common/login.yaml`의 글자를 실제 로그인 화면에 맞게 고칩니다.
-6. APK를 올리고 Actions에서 `qa`를 수동 실행합니다.
+5. 두 앱의 APK를 올리고 Actions에서 `qa`를 수동 실행합니다. 둘 다 alpha를 보는 dev 빌드입니다.
 
    ```bash
-   aws s3 cp app-alpha.apk s3://<qa_bucket 값>/apk/latest.apk
+   aws s3 cp user-dev.apk s3://<qa_bucket 값>/apk/user.apk
+   aws s3 cp care-dev.apk s3://<qa_bucket 값>/apk/care.apk
    ```
 
 ### 프론트엔드 연동
 
-- alpha APK를 빌드할 때 `apk/latest.apk`로 올린 뒤 `repository_dispatch`(`apk-uploaded`, `client_payload.apk_version`)를 보내면 바로 실행됩니다. 업로드 권한은 프론트 레포 이름이 정해지면 추가해야 합니다.
+- 두 앱의 dev APK를 빌드할 때 `apk/user.apk`, `apk/care.apk`로 올린 뒤 `repository_dispatch`(`apk-uploaded`, `client_payload.apk_version`)를 보내면 바로 실행됩니다. 업로드 권한은 프론트 레포 이름이 정해지면 추가해야 합니다.
 - 주요 버튼에 `testTag`/resource-id를 붙이면 문구 변경에 덜 깨집니다. 지금 문법은 화면 글자만 찾기 때문에, 도입할 때 문법도 함께 넓혀야 합니다.
 
 ### public 레포 규칙

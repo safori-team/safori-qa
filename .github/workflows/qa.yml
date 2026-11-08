@@ -25,7 +25,6 @@ jobs:
       AWS_REGION: ap-northeast-2
       QA_BUCKET: ${{ secrets.QA_BUCKET }}
       QA_ACCOUNTS: ${{ secrets.QA_ACCOUNTS }}
-      QA_APP_ID: ${{ secrets.QA_APP_ID }}
       APK_VERSION: ${{ github.event.client_payload.apk_version || 'latest' }}
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -51,8 +50,12 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Download APK
-        run: aws s3 cp "s3://$QA_BUCKET/apk/latest.apk" app.apk --no-progress --only-show-errors
+      # 어르신은 사포리 앱(user.apk), 보호자·관리자는 사포리 관리자 앱(care.apk)
+      - name: Download APKs
+        run: |
+          for a in user care; do
+            aws s3 cp "s3://$QA_BUCKET/apk/$a.apk" "$a.apk" --no-progress --only-show-errors
+          done
 
       - name: Install Maestro
         run: |
@@ -73,5 +76,6 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
-            adb install -r app.apk
+            adb install -r user.apk
+            adb install -r care.apk
             node scripts/run.js

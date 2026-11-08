@@ -1,5 +1,7 @@
 // 한글 단계 → Maestro YAML. 콘솔(브라우저)·Lambda·러너가 같은 파일을 쓴다.
 export const ROLES = ['어르신', '보호자', '관리자'];
+// 어르신은 사포리 앱, 나머지는 사포리 관리자 앱을 쓴다 (alpha 를 보는 dev 빌드)
+export const APP_IDS = { 어르신: 'com.safori.app.dev', 보호자: 'com.safori.care.dev', 관리자: 'com.safori.care.dev' };
 
 export function parseSteps(text) {
   const steps = [], errors = [];
@@ -47,7 +49,7 @@ export function parseSteps(text) {
   return { role, steps, errors };
 }
 
-export function toYaml(name, steps, appId = 'com.safori.app') {
+export function toYaml(name, steps, appId) {
   // JSON 문자열은 그대로 유효한 YAML 문자열이다
   const q = v => JSON.stringify(v);
   const out = [`appId: ${q(appId)}`, `name: ${q(name || '이름 없음')}`, '---'];

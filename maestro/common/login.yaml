@@ -1,11 +1,30 @@
-# 역할별 로그인. QA_ID / QA_PW 는 scripts/run.js 가 시나리오 역할에 맞춰 넘긴다.
-# TODO(프론트): 실제 로그인 화면의 문구나 testTag 로 아래 글자를 바꾼다.
+# 역할별 로그인. APP_ID · QA_ID · QA_PW 는 scripts/run.js 가 시나리오 역할에 맞춰 넘긴다.
+# 사포리 앱과 사포리 관리자 앱 모두 입력칸이 「아이디」「비밀번호」, 버튼이 「로그인」이다.
 appId: ${APP_ID}
 ---
+# 이전 시나리오의 로그인 세션을 지워 역할이 섞이지 않게 한다 (dev client 빌드가 아니라 써도 된다)
 - launchApp:
     clearState: true
+# 느린 CI 에뮬레이터에서는 런처 ANR 창이 화면을 덮는다. 닫기 대신 기다리기를 누른다
+- runFlow:
+    when:
+      visible: ".*(isn't responding|응답하지 않습니다).*"
+    commands:
+      - tapOn:
+          text: "Wait|기다리기"
+- extendedWaitUntil:
+    visible: "비밀번호"
+    timeout: 30000
 - tapOn: "아이디"
 - inputText: ${QA_ID}
+- hideKeyboard
 - tapOn: "비밀번호"
 - inputText: ${QA_PW}
-- tapOn: "로그인"
+- hideKeyboard
+- tapOn:
+    text: "로그인"
+    index: 0
+# 로그인 화면이 사라질 때까지 기다린다
+- extendedWaitUntil:
+    notVisible: "로그인 유지"
+    timeout: 30000
