@@ -12,15 +12,15 @@ appId: ${APP_ID}
     commands:
       - tapOn:
           text: "Wait|기다리기"
-# 스토어에 더 새 버전이 있으면 「새 버전이 있어요」 팝업이 로그인 화면을 덮는다. 나중에로 닫는다
+# 새 OTA 번들이 있으면 「새 버전이 있어요」 팝업이 뜬다. 항상 최신 번들로 테스트해야 하므로
+# 「지금 업데이트」로 받아 재시작한다. 팝업이 없으면 그대로 진행한다
 - extendedWaitUntil:
     visible: "비밀번호|새 버전이 있어요"
     timeout: 30000
-- runFlow:
-    when:
-      visible: "새 버전이 있어요"
-    commands:
-      - tapOn: "나중에"
+- runFlow: update.yaml
+- extendedWaitUntil:
+    visible: "비밀번호"
+    timeout: 60000
 - tapOn: "아이디"
 - inputText: ${QA_ID}
 - hideKeyboard
@@ -34,9 +34,6 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     notVisible: "로그인 유지"
     timeout: 30000
-# 로그인 뒤에 팝업이 다시 뜨는 경우도 닫는다
-- runFlow:
-    when:
-      visible: "새 버전이 있어요"
-    commands:
-      - tapOn: "나중에"
+# 번들을 받는 동안 로그인이 먼저 끝났으면 팝업이 로그인 뒤에 뜬다. 이때도 업데이트한다
+# (로그인 유지가 기본이라 재시작해도 로그인 상태가 남는다)
+- runFlow: update.yaml

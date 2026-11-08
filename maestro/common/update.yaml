@@ -1,0 +1,11 @@
+# 「새 버전이 있어요」 팝업이 떠 있으면 지금 업데이트를 눌러 최신 OTA 번들로 재시작한다
+appId: ${APP_ID}
+---
+- runFlow:
+    when:
+      visible: "새 버전이 있어요"
+    commands:
+      - tapOn: "지금 업데이트"
+      - extendedWaitUntil:
+          notVisible: "새 버전이 있어요"
+          timeout: 60000
