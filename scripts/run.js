@@ -56,6 +56,8 @@ export async function record(s, run) {
 }
 
 async function main() {
+  // Maestro 가 없으면 시나리오마다 가짜 실패와 이슈가 생긴다. 아무것도 기록하지 않고 멈춘다
+  if (spawnSync('maestro', ['--version'], { stdio: 'ignore' }).status !== 0) throw new Error('maestro 를 실행할 수 없어요');
   rmSync(GEN, { recursive: true, force: true });
   mkdirSync(GEN, { recursive: true });
   mkdirSync(OUT, { recursive: true });

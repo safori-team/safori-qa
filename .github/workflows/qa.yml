@@ -57,9 +57,15 @@ jobs:
             aws s3 cp "s3://$QA_BUCKET/apk/$a.apk" "$a.apk" --no-progress --only-show-errors
           done
 
+      # 설치 스크립트는 다운로드가 깨져도(504 등) 성공으로 끝난다. 실행 파일이 생길 때까지 다시 받는다
       - name: Install Maestro
         run: |
-          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          for i in 1 2 3; do
+            curl -fsSL "https://get.maestro.mobile.dev" | bash || true
+            [ -x "$HOME/.maestro/bin/maestro" ] && break
+            echo "Maestro 설치 재시도 $i"; sleep 15
+          done
+          [ -x "$HOME/.maestro/bin/maestro" ]
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       - name: Enable KVM
