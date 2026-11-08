@@ -21,8 +21,10 @@ function runFlow(s, role, steps) {
   writeFileSync(flow, toYaml(s.name, steps, appId));
   const { id, pw } = accounts[role];
   // 비밀번호가 찍히지 않도록 출력은 버린다
-  const r = spawnSync('maestro', ['test', '-e', `APP_ID=${appId}`, '-e', `QA_ID=${id}`, '-e', `QA_PW=${pw}`, '--format', 'junit', '--output', report, flow], { stdio: 'ignore' });
-  return { ok: r.status === 0, xml: existsSync(report) ? readFileSync(report, 'utf8') : '' };
+  const r = spawnSync('maestro', ['test', '-e', `APP_ID=${appId}`, '-e', `QA_ID=${id}`, '-e', `QA_PW=${pw}`, '--format', 'junit', '--output', report, flow], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  // JUnit 리포트가 없으면(Maestro 자체가 못 돈 경우) 출력 끝부분을 원인으로 남긴다. 콘솔(S3)에만 저장된다
+  const log = r.error ? `maestro 실행 불가: ${r.error.code ?? r.error.message}` : `${r.stdout ?? ''}${r.stderr ?? ''}`.split(pw).join('***').trim().slice(-300);
+  return { ok: r.status === 0, xml: existsSync(report) ? readFileSync(report, 'utf8') : '', log };
 }
 
 async function screenshot(id, ranAt) {
@@ -66,9 +68,9 @@ async function main() {
     if (errors.length) run = { ...base, result: '형식오류', message: errors[0] };
     else if (!accounts[role]) run = { ...base, result: '실패', message: `${role} 테스트 계정이 설정되지 않았어요` };
     else {
-      const { ok, xml } = runFlow(s, role, steps);
+      const { ok, xml, log } = runFlow(s, role, steps);
       run = ok ? { ...base, result: '통과' }
-        : { ...base, result: '실패', message: failureMessage(xml), screenshotKey: await screenshot(s.id, ranAt) };
+        : { ...base, result: '실패', message: xml ? failureMessage(xml) : log || '실행 실패', screenshotKey: await screenshot(s.id, ranAt) };
     }
     if (run.result !== '통과' && s.status === '검증됨') { failed++; run.issueUrl = ticket(s); }
     await record(s, run);
