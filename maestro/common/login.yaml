@@ -12,9 +12,15 @@ appId: ${APP_ID}
     commands:
       - tapOn:
           text: "Wait|기다리기"
+# 스토어에 더 새 버전이 있으면 「새 버전이 있어요」 팝업이 로그인 화면을 덮는다. 나중에로 닫는다
 - extendedWaitUntil:
-    visible: "비밀번호"
+    visible: "비밀번호|새 버전이 있어요"
     timeout: 30000
+- runFlow:
+    when:
+      visible: "새 버전이 있어요"
+    commands:
+      - tapOn: "나중에"
 - tapOn: "아이디"
 - inputText: ${QA_ID}
 - hideKeyboard
@@ -28,3 +34,9 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     notVisible: "로그인 유지"
     timeout: 30000
+# 로그인 뒤에 팝업이 다시 뜨는 경우도 닫는다
+- runFlow:
+    when:
+      visible: "새 버전이 있어요"
+    commands:
+      - tapOn: "나중에"
