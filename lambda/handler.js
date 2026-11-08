@@ -53,7 +53,7 @@ async function create(body) {
   await updateJson(SCENARIOS, [], list => {
     const id = Math.max(0, ...list.map(s => s.id)) + 1;
     created = {
-      id, name: v.name, role: v.role, steps: v.steps, status: nextStatus(null, v.picked, true),
+      id, rev: 0, name: v.name, role: v.role, steps: v.steps, status: nextStatus(null, v.picked, true),
       updatedBy: v.updatedBy, updatedAt: new Date().toISOString(), lastResult: '미실행', lastRunAt: null,
     };
     return [created, ...list];
@@ -68,11 +68,11 @@ async function update(id, body) {
   await updateJson(SCENARIOS, [], list => {
     const s = list.find(x => x.id === id);
     res = !s ? fail(404, '시나리오를 찾을 수 없어요')
-      : s.updatedAt !== body.baseUpdatedAt ? fail(409, '다른 사람이 먼저 수정했어요. 새로고침한 뒤 다시 저장해 주세요')
+      : (s.rev ?? 0) !== body.baseRev ? fail(409, '다른 사람이 먼저 수정했어요. 새로고침한 뒤 다시 저장해 주세요')
       : null;
     if (res) return list;
     saved = {
-      ...s, name: v.name, role: v.role, steps: v.steps, status: nextStatus(s.status, v.picked, s.steps !== v.steps),
+      ...s, rev: (s.rev ?? 0) + 1, name: v.name, role: v.role, steps: v.steps, status: nextStatus(s.status, v.picked, s.steps !== v.steps),
       updatedBy: v.updatedBy, updatedAt: new Date().toISOString(),
     };
     return list.map(x => x.id === id ? saved : x);

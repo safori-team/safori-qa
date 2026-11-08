@@ -174,7 +174,7 @@ function openForm(s) {
     e.preventDefault();
     const name = $('#in-by').value.trim();
     try { localStorage.setItem('qa-by', name); } catch {}
-    const body = JSON.stringify({ name: $('#in-name').value, steps: $('#in-steps').value, status: $('#in-status').value, updatedBy: name, baseUpdatedAt: s?.updatedAt });
+    const body = JSON.stringify({ name: $('#in-name').value, steps: $('#in-steps').value, status: $('#in-status').value, updatedBy: name, baseRev: s?.rev ?? 0 });
     try {
       const saved = await api(s ? `/api/scenarios/${s.id}` : '/api/scenarios', { method: s ? 'PUT' : 'POST', body });
       editing = false; selected = saved.id; await load(); toast('저장했어요');

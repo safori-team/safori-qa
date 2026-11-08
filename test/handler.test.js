@@ -56,11 +56,12 @@ test('다른 사람이 먼저 고쳤으면 409, 단계를 고치면 초안으로
   const cookies = await session();
   const { json: s } = await save(cookies);
   await updateJson(SCENARIOS, [], list => list.map(x => ({ ...x, status: '검증됨' })));
-  const put = extra => call('PUT', `/api/scenarios/${s.id}`, { name: 'n', steps: STEPS, updatedBy: 'a', baseUpdatedAt: s.updatedAt, ...extra }, cookies);
+  const put = extra => call('PUT', `/api/scenarios/${s.id}`, { name: 'n', steps: STEPS, updatedBy: 'a', baseRev: s.rev, ...extra }, cookies);
   const same = await put();
   assert.equal(same.json.status, '검증됨');
-  assert.equal((await put()).statusCode, s.updatedAt === same.json.updatedAt ? 200 : 409);
-  const changed = await put({ steps: `${STEPS}\n뒤로`, baseUpdatedAt: same.json.updatedAt });
+  // 같은 판(rev)을 보고 고친 두 번째 저장은 시각과 상관없이 막는다
+  assert.equal((await put()).statusCode, 409);
+  const changed = await put({ steps: `${STEPS}\n뒤로`, baseRev: same.json.rev });
   assert.equal(changed.json.status, '초안');
 });
 
