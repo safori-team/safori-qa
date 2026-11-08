@@ -3,7 +3,7 @@ name: qa
 # public 레포 규칙: pull_request 트리거를 쓰지 않는다. 외부 PR 이 secrets 나 AWS role 에 닿으면 안 된다.
 on:
   schedule:
-    - cron: "10 17 * * *" # 매일 02:10 KST
+    - cron: "0 22 * * *" # 매일 07:00 KST
   workflow_dispatch:
   repository_dispatch:
     types: [apk-uploaded]
