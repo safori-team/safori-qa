@@ -27,23 +27,8 @@ jobs:
       QA_ACCOUNTS: ${{ secrets.QA_ACCOUNTS }}
       APK_VERSION: ${{ github.event.client_payload.apk_version || 'latest' }}
       GH_TOKEN: ${{ github.token }}
-      # 키 값이 아니라 설정 여부만 넘긴다
-      HAS_FRONT_KEY: ${{ secrets.FRONT_DEPLOY_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
-
-      # YAML 시나리오가 부르는 프론트 흐름과 서브플로우. SAFORI-Front 는 private 이라 읽기 전용 deploy key 로 받는다.
-      # 키가 없으면 건너뛰고, 프론트 흐름을 부르는 YAML 시나리오만 실패한다
-      - name: Checkout SAFORI-Front .maestro
-        if: env.HAS_FRONT_KEY == 'true'
-        uses: actions/checkout@v4
-        with:
-          repository: safori-team/SAFORI-Front
-          ref: dev
-          ssh-key: ${{ secrets.FRONT_DEPLOY_KEY }}
-          persist-credentials: false
-          path: front
-          sparse-checkout: .maestro
 
       - uses: actions/setup-node@v4
         with:
@@ -71,6 +56,10 @@ jobs:
           for a in user care; do
             aws s3 cp "s3://$QA_BUCKET/apk/$a.apk" "$a.apk" --no-progress --only-show-errors
           done
+
+      # 프론트에서 옮겨 온 공용 서브플로우. 화면 문구와 딥링크가 들어 있어 public 레포가 아니라 S3 에 둔다
+      - name: Download subflows
+        run: aws s3 sync "s3://$QA_BUCKET/subflows/" maestro/subflows/ --only-show-errors
 
       # 버전과 해시를 고정해 GitHub 릴리스에서 직접 받는다. 설치 스크립트(curl | bash)는 내용이 바뀔 수 있고,
       # 다운로드가 깨져도(504) 성공으로 끝난 적이 있다. 프론트 E2E 와 같은 2.8.0 을 쓴다

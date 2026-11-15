@@ -2,14 +2,12 @@
 // 시나리오 내용·Maestro 출력·스크린샷은 S3 에만 남긴다.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, relative } from 'node:path';
 import { APP_IDS, checkYaml, parseSteps, toYaml } from '../shared/steps.js';
 import { SCENARIOS, runsKey, getJson, putBytes, updateJson } from '../shared/store.js';
 
 const { QA_ACCOUNTS, APK_VERSION = 'latest' } = process.env;
 const accounts = JSON.parse(QA_ACCOUNTS ?? '{}');
-// FRONT: 워크플로우가 받아 둔 SAFORI-Front 의 .maestro. YAML 시나리오가 프론트 흐름과 서브플로우를 그대로 부른다
-const GEN = 'maestro/.generated', OUT = '.out', FRONT = 'front/.maestro/flows';
+const GEN = 'maestro/.generated', OUT = '.out';
 const RUN_HISTORY = 50;
 
 // 실패 원인을 JUnit 리포트에서 꺼낸다. 형식이 바뀌어도 '실행 실패'로 떨어지게 둔다.
@@ -20,7 +18,7 @@ export function failureMessage(xml) {
 
 function maestro(flow, role, report) {
   const { id, pw } = accounts[role];
-  // USERNAME · PASSWORD 는 프론트 흐름이 쓰는 이름이다
+  // USERNAME · PASSWORD 는 프론트에서 옮겨 온 흐름(S3 subflows/login.yaml)이 쓰는 이름이다
   const env = { APP_ID: APP_IDS[role], QA_ID: id, QA_PW: pw, USERNAME: id, PASSWORD: pw };
   const r = spawnSync('maestro', ['test', ...Object.entries(env).flatMap(([k, v]) => ['-e', `${k}=${v}`]), '--format', 'junit', '--output', report, flow],
     { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
@@ -35,15 +33,13 @@ function runFlow(s, role, steps) {
   return maestro(flow, role, `${OUT}/${s.id}.xml`);
 }
 
-// YAML 시나리오는 프론트 flows 폴더에 둬서 `runFlow: 04-home.yaml`, `../subflows/...` 가 그대로 풀리게 한다.
-// 앞에 prepare.yaml 을 붙여 앱 초기화와 OTA 업데이트를 우리 방식으로 먼저 처리한다
+// YAML 시나리오는 maestro/.generated 에 두므로 `../subflows/login.yaml`, `../common/...` 이 그대로 풀린다.
+// 앞에 prepare.yaml 을 붙여 앱 초기화와 OTA 업데이트를 먼저 처리한다
 function runYaml(s, role) {
-  const dir = existsSync(FRONT) ? FRONT : GEN;
-  const body = `${dir}/qa-${s.id}.yaml`, wrap = `${dir}/qa-${s.id}-run.yaml`;
+  const body = `${GEN}/${s.id}.yaml`, wrap = `${GEN}/${s.id}-run.yaml`;
   writeFileSync(body, `${s.steps}\n`);
   writeFileSync(wrap, [`appId: ${JSON.stringify(APP_IDS[role])}`, '---',
-    `- runFlow: ${JSON.stringify(relative(dirname(wrap), 'maestro/common/prepare.yaml'))}`,
-    `- runFlow: ${JSON.stringify(`qa-${s.id}.yaml`)}`].join('\n') + '\n');
+    '- runFlow: "../common/prepare.yaml"', `- runFlow: ${JSON.stringify(`${s.id}.yaml`)}`].join('\n') + '\n');
   return maestro(wrap, role, `${OUT}/${s.id}.xml`);
 }
 

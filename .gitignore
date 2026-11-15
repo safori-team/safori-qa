@@ -3,3 +3,4 @@ maestro/.generated/
 .out/
 *.apk
 *.zip
+maestro/subflows/

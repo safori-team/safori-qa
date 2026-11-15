@@ -112,6 +112,7 @@ S3 키는 다음과 같습니다.
 | `screenshots/{id}/*.png` | 실패 스크린샷 (30일 뒤 자동 삭제) |
 | `apk/user.apk` | 사포리 앱 (`user-dev` 빌드) |
 | `apk/care.apk` | 사포리 관리자 앱 (`care-dev` 빌드) |
+| `subflows/*.yaml` | YAML 시나리오가 부르는 공용 서브플로우. 실행 때 `maestro/subflows/`로 받습니다 |
 
 ### 로컬 테스트
 
@@ -131,7 +132,6 @@ npm ci && npm test
    | `AWS_ROLE_TO_ASSUME` | `qa_ci_role_arn` 값 |
    | `QA_BUCKET` | `qa_bucket` 값 |
    | `QA_ACCOUNTS` | `{"어르신":{"id":"...","pw":"..."},"보호자":{...},"관리자":{...}}` (관리자 = 담당자 계정) |
-   | `FRONT_DEPLOY_KEY` | SAFORI-Front 읽기 전용 deploy key의 개인 키 (YAML 모드에서 프론트 흐름을 쓸 때) |
 
 3. Actions에서 `deploy` 워크플로우를 수동 실행해 Lambda 코드를 배포합니다.
 4. 콘솔 비밀번호를 정합니다. 이 명령은 Lambda 환경변수를 통째로 바꾸므로 `QA_BUCKET`도 같이 넣어야 합니다.
@@ -153,20 +153,27 @@ npm ci && npm test
 
 시나리오 형식을 **YAML**로 고르면 Maestro YAML을 그대로 실행합니다. 역할은 따로 고르고, 로그인은 YAML 안에서 직접 합니다.
 
-- 실행기는 YAML을 SAFORI-Front `dev` 브랜치의 `.maestro/flows/`에 두고 돌립니다. 그래서 프론트 흐름(`- runFlow: 04-home.yaml`)과 `../subflows/...`를 그대로 부를 수 있습니다.
+- 실행기는 YAML을 `maestro/.generated/`에 두고 돌립니다. 그래서 `../subflows/login.yaml` 같은 공용 서브플로우를 부를 수 있습니다.
 - 앞에 `maestro/common/prepare.yaml`이 붙어 앱을 초기화하고 OTA 업데이트를 먼저 처리합니다.
-- 환경변수 `USERNAME` · `PASSWORD`(프론트 흐름이 쓰는 이름)와 `QA_ID` · `QA_PW`에 역할의 테스트 계정이 들어갑니다.
+- 환경변수 `USERNAME` · `PASSWORD`와 `QA_ID` · `QA_PW`에 역할의 테스트 계정이 들어갑니다.
 - `${}`로 테스트 계정을 읽을 수 있어 팀 내부 콘솔에서만 씁니다.
 
-프론트 흐름 하나를 가져오는 가장 짧은 YAML입니다. 프론트에서 흐름을 고치면 다음 실행부터 바로 반영됩니다.
+#### 프론트 E2E에서 옮겨 온 것
 
-```yaml
-appId: com.safori.app.dev
----
-- runFlow: 04-home.yaml
+SAFORI-Front `.maestro`의 E2E를 이 레포로 옮겨 QA가 맡습니다. 옮긴 뒤로는 이쪽이 원본이라, 프론트 흐름이 바뀌어도 자동으로 따라가지 않습니다.
+
+| 옮긴 것 | 위치 |
+|---|---|
+| 서브플로우 `login`, `dismiss-offer-modal` (어르신 앱 로그인, 상담 제안 모달 닫기) | S3 `subflows/` |
+| 흐름 04 홈, 05 일기 작성 시작, 07 로그인·회원가입, 11 내 정보, 12 도움말, 18 홈 바로가기 뒤로 가기 | 콘솔의 YAML 시나리오 |
+
+옮겨 온 흐름에는 출시 전 화면 문구와 딥링크가 들어 있어 이 public 레포에 두지 않습니다. 서브플로우를 고치거나 더할 때는 S3에 올립니다.
+
+```bash
+aws s3 cp login.yaml s3://<qa_bucket 값>/subflows/login.yaml
 ```
 
-데이터 준비 없이 바로 쓸 수 있는 프론트 흐름은 04 홈, 05 일기 작성 시작, 07 로그인·회원가입, 11 내 정보, 12 도움말, 18 홈 바로가기 뒤로 가기입니다.
+남은 흐름은 데이터 준비(일기 시딩 4개, 상담 생성 5개)나 기기 음성(3개)이 필요해 아직 옮기지 않았습니다.
 
 ### 프론트엔드 연동
 

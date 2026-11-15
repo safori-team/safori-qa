@@ -149,7 +149,7 @@ function openForm(s) {
       <div class="field"><label for="in-by">수정자</label><input id="in-by" required value="${esc(by())}" placeholder="예: 김기획"></div>
       <div class="field"><label for="in-format">형식</label>
         <select id="in-format"><option>한글</option><option ${s?.format === 'YAML' ? 'selected' : ''}>YAML</option></select>
-        <span class="hint">YAML 은 개발자용이에요. Maestro YAML 을 그대로 실행하고, 프론트 흐름(04-home.yaml 등)과 ../subflows 를 부를 수 있어요.</span></div>
+        <span class="hint">YAML 은 개발자용이에요. Maestro YAML 을 그대로 실행하고, 공용 서브플로우(../subflows/login.yaml 등)를 부를 수 있어요.</span></div>
       <div class="field" id="role-field"><label for="in-role">역할</label>
         <select id="in-role">${ROLES.map(r => `<option ${s?.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select>
         <span class="hint">테스트 계정과 앱을 정해요. 로그인은 YAML 안에서 직접 해요.</span></div>
@@ -167,7 +167,7 @@ function openForm(s) {
   const check = () => {
     const yaml = isYaml();
     $('#role-field').hidden = !yaml; $('#yaml-box').hidden = yaml;
-    $('#steps-hint').textContent = yaml ? '맨 위 appId 는 역할의 앱과 같아야 해요. 예: - runFlow: 04-home.yaml'
+    $('#steps-hint').textContent = yaml ? '맨 위 appId 는 역할의 앱과 같아야 해요. 어르신 앱 로그인: - runFlow: ../subflows/login.yaml'
       : '한 줄에 한 동작: 로그인 · 누르기 · 보임 · 안보임 · 입력 · 기다리기 · 스크롤 · 뒤로';
     const r = yaml ? checkYaml($('#in-steps').value, $('#in-role').value) : parseSteps($('#in-steps').value);
     $('#check').innerHTML = r.errors.length ? r.errors.map(e => `<span class="err">${esc(e)}</span>`).join('') : `<span class="ok">형식이 맞아요 · 역할 ${r.role}</span>`;
@@ -175,7 +175,7 @@ function openForm(s) {
     $('#btn-save').disabled = r.errors.length > 0;
   };
   // 형식이나 역할을 바꾸면 아직 손대지 않은 입력칸만 그 형식의 예시로 바꾼다
-  const sample = () => isYaml() ? `appId: ${APP_IDS[$('#in-role').value]}\n---\n- runFlow: 04-home.yaml\n` : '로그인 보호자\n';
+  const sample = () => isYaml() ? `appId: ${APP_IDS[$('#in-role').value]}\n---\n` : '로그인 보호자\n';
   let untouched = !s;
   $('#in-steps').oninput = () => { untouched = false; check(); };
   $('#in-format').onchange = $('#in-role').onchange = () => { if (untouched) $('#in-steps').value = sample(); check(); };
