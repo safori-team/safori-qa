@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { APP_IDS, parseSteps, toYaml, nextStatus } from '../shared/steps.js';
+import { APP_IDS, checkYaml, parseSteps, toYaml, nextStatus } from '../shared/steps.js';
 
 test('모든 동사를 Maestro 명령으로 바꾼다', () => {
   const r = parseSteps('# 메모\n로그인 어르신\n누르기 "일기"\n입력 "메모" "안녕"\n기다리기 "분석 완료" 30\n안보임 "오류"\n스크롤\n뒤로');
@@ -33,4 +33,13 @@ test('검증됨은 저장으로 얻을 수 없고 단계를 고치면 초안이 
   assert.equal(nextStatus('검증됨', '초안', true), '초안');
   assert.equal(nextStatus('검증됨', '중지', false), '중지');
   assert.equal(nextStatus('중지', '검증됨', false), '초안');
+});
+
+test('YAML 모드는 역할과 appId 가 맞아야 한다', () => {
+  const ok = checkYaml('appId: com.safori.app.dev\n---\n- runFlow: 04-home.yaml\n', '어르신');
+  assert.deepEqual(ok, { role: '어르신', errors: [] });
+  assert.ok(checkYaml('appId: com.safori.app.dev\n---\n- back\n', '관리자').errors[0].includes('com.safori.care.dev'));
+  assert.ok(checkYaml('- back\n', '보호자').errors.some(e => e.includes('appId')));
+  assert.ok(checkYaml('appId: com.safori.care.dev\n- back\n', '보호자').errors.some(e => e.includes('---')));
+  assert.ok(checkYaml('appId: com.safori.care.dev\n---\n', '운영자').errors[0].startsWith('역할은'));
 });

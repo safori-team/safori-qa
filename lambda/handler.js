@@ -2,7 +2,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseSteps, nextStatus } from '../shared/steps.js';
+import { checkYaml, parseSteps, nextStatus } from '../shared/steps.js';
 import { SCENARIOS, runsKey, getJson, getBytes, updateJson } from '../shared/store.js';
 
 const root = join(import.meta.dirname, '..');
@@ -41,9 +41,10 @@ function validate(body) {
   const steps = String(body.steps ?? '').trim();
   if (!name) return { error: '이름을 입력해 주세요' };
   if (!updatedBy) return { error: '수정자를 입력해 주세요' };
-  const parsed = parseSteps(steps);
+  const format = body.format === 'YAML' ? 'YAML' : '한글';
+  const parsed = format === 'YAML' ? checkYaml(steps, body.role) : parseSteps(steps);
   if (parsed.errors.length) return { error: parsed.errors[0] };
-  return { name, updatedBy, steps, role: parsed.role, picked: body.status };
+  return { name, updatedBy, steps, format, role: parsed.role, picked: body.status };
 }
 
 async function create(body) {
@@ -53,7 +54,7 @@ async function create(body) {
   await updateJson(SCENARIOS, [], list => {
     const id = Math.max(0, ...list.map(s => s.id)) + 1;
     created = {
-      id, rev: 0, name: v.name, role: v.role, steps: v.steps, status: nextStatus(null, v.picked, true),
+      id, rev: 0, name: v.name, format: v.format, role: v.role, steps: v.steps, status: nextStatus(null, v.picked, true),
       updatedBy: v.updatedBy, updatedAt: new Date().toISOString(), lastResult: '미실행', lastRunAt: null,
     };
     return [created, ...list];
@@ -72,7 +73,8 @@ async function update(id, body) {
       : null;
     if (res) return list;
     saved = {
-      ...s, rev: (s.rev ?? 0) + 1, name: v.name, role: v.role, steps: v.steps, status: nextStatus(s.status, v.picked, s.steps !== v.steps),
+      ...s, rev: (s.rev ?? 0) + 1, name: v.name, format: v.format, role: v.role, steps: v.steps,
+      status: nextStatus(s.status, v.picked, s.steps !== v.steps || (s.format ?? '한글') !== v.format),
       updatedBy: v.updatedBy, updatedAt: new Date().toISOString(),
     };
     return list.map(x => x.id === id ? saved : x);

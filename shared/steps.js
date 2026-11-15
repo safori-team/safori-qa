@@ -63,6 +63,21 @@ export function toYaml(name, steps, appId) {
   return out.join('\n') + '\n';
 }
 
+// 개발자용 YAML 모드. Maestro YAML 을 그대로 실행하므로 형식은 러너의 Maestro 가 판단하고,
+// 여기서는 역할과 앱이 맞는지만 본다. ${} 로 테스트 계정을 읽을 수 있어 팀 내부 콘솔에서만 쓴다.
+export const YAML_LIMIT = 20000;
+export function checkYaml(text, role) {
+  const errors = [];
+  if (!ROLES.includes(role)) errors.push(`역할은 ${ROLES.join(' · ')} 중 하나예요`);
+  if (!text.trim()) errors.push('YAML 을 입력해 주세요');
+  if (text.length > YAML_LIMIT) errors.push(`YAML 은 ${YAML_LIMIT.toLocaleString()}자까지 쓸 수 있어요`);
+  const appId = text.match(/^appId:\s*["']?([\w.]+)/m)?.[1];
+  if (!appId) errors.push('맨 위에 appId 를 써 주세요');
+  else if (APP_IDS[role] && appId !== APP_IDS[role]) errors.push(`${role} 시나리오의 appId 는 ${APP_IDS[role]} 이어야 해요`);
+  if (!/^---\s*$/m.test(text)) errors.push("appId 아래에 '---' 줄이 필요해요");
+  return { role: ROLES.includes(role) ? role : null, errors };
+}
+
 // 저장 시 상태. 검증됨은 실행 통과로만 얻고, 단계를 고치면 초안으로 돌아간다.
 export function nextStatus(prev, picked, stepsChanged) {
   if (picked === '중지') return '중지';

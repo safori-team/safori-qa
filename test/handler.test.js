@@ -102,3 +102,17 @@ test('JUnit 실패 메시지를 꺼낸다', () => {
   assert.equal(failureMessage('<failure>본문 메시지</failure>'), '본문 메시지');
   assert.equal(failureMessage(''), '실행 실패');
 });
+
+test('YAML 시나리오는 형식과 역할을 저장하고, 형식을 바꾸면 초안으로 돌아간다', async () => {
+  objects.clear();
+  const cookies = await session();
+  const yaml = 'appId: com.safori.app.dev\n---\n- runFlow: 04-home.yaml';
+  assert.equal((await save(cookies, { format: 'YAML', role: '보호자', steps: yaml })).statusCode, 400);
+  const { json: s } = await save(cookies, { format: 'YAML', role: '어르신', steps: yaml });
+  assert.equal(s.format, 'YAML');
+  assert.equal(s.role, '어르신');
+  await updateJson(SCENARIOS, [], list => list.map(x => ({ ...x, status: '검증됨' })));
+  const back = await call('PUT', `/api/scenarios/${s.id}`, { name: 'n', steps: STEPS, updatedBy: 'a', baseRev: s.rev }, cookies);
+  assert.equal(back.json.format, '한글');
+  assert.equal(back.json.status, '초안');
+});

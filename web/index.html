@@ -86,7 +86,7 @@ textarea { font-family: Consolas, ui-monospace, monospace; font-size: .86rem; mi
 </div>
 <div class="toast" id="toast" hidden></div>
 <script type="module">
-import { APP_IDS, parseSteps, toYaml } from '/steps.js';
+import { APP_IDS, ROLES, checkYaml, parseSteps, toYaml } from '/steps.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -119,7 +119,7 @@ function renderRows() {
   const fr = $('#f-role').value, fs = $('#f-status').value;
   const list = scenarios.filter(s => (!fr || s.role === fr) && (!fs || s.status === fs));
   $('#rows').innerHTML = list.map(s => `<tr data-id="${s.id}" tabindex="0" aria-selected="${s.id === selected && !editing}">
-    <td>${esc(s.name)}</td><td>${esc(s.role)}</td><td><span class="pill s-${esc(s.status)}">${esc(s.status)}</span></td>
+    <td>${esc(s.name)}${s.format === 'YAML' ? ' <span class="pill r-미실행">YAML</span>' : ''}</td><td>${esc(s.role)}</td><td><span class="pill s-${esc(s.status)}">${esc(s.status)}</span></td>
     <td><span class="pill r-${esc(s.lastResult)}">${esc(s.lastResult)}</span></td></tr>`).join('')
     || '<tr><td colspan="4" class="muted">시나리오가 없어요. 새 시나리오를 눌러 첫 시나리오를 등록해 보세요.</td></tr>';
 }
@@ -129,7 +129,7 @@ async function renderDetail() {
   $('#panel').innerHTML = `
     <div class="head"><div class="stack"><h2>${esc(s.name)}</h2><div><span class="pill s-${esc(s.status)}">${esc(s.status)}</span> <span class="pill r-${esc(s.lastResult)}">${esc(s.lastResult)}</span></div></div>
       <button class="btn" id="btn-edit">수정</button></div>
-    <p class="muted">${esc(s.role)} · ${esc(s.updatedBy)} · ${when(s.updatedAt)}</p>
+    <p class="muted">${esc(s.role)} · ${esc(s.format ?? '한글')} · ${esc(s.updatedBy)} · ${when(s.updatedAt)}</p>
     <div id="fail"></div>
     <div class="stack"><h3>단계</h3><pre>${esc(s.steps)}</pre></div>
     <div class="stack"><h3>실행 이력</h3><div class="runs" id="runs"><span class="muted">불러오는 중…</span></div></div>`;
@@ -147,29 +147,45 @@ function openForm(s) {
     <form class="form" id="form">
       <div class="field"><label for="in-name">이름</label><input id="in-name" required value="${esc(s?.name)}" placeholder="예: 보호자 주간 리포트 확인"></div>
       <div class="field"><label for="in-by">수정자</label><input id="in-by" required value="${esc(by())}" placeholder="예: 김기획"></div>
+      <div class="field"><label for="in-format">형식</label>
+        <select id="in-format"><option>한글</option><option ${s?.format === 'YAML' ? 'selected' : ''}>YAML</option></select>
+        <span class="hint">YAML 은 개발자용이에요. Maestro YAML 을 그대로 실행하고, 프론트 흐름(04-home.yaml 등)과 ../subflows 를 부를 수 있어요.</span></div>
+      <div class="field" id="role-field"><label for="in-role">역할</label>
+        <select id="in-role">${ROLES.map(r => `<option ${s?.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select>
+        <span class="hint">테스트 계정과 앱을 정해요. 로그인은 YAML 안에서 직접 해요.</span></div>
       <div class="field"><label for="in-steps">단계</label>
         <textarea id="in-steps" spellcheck="false">${esc(s?.steps ?? '로그인 보호자\n')}</textarea>
-        <span class="hint">한 줄에 한 동작: 로그인 · 누르기 · 보임 · 안보임 · 입력 · 기다리기 · 스크롤 · 뒤로</span>
+        <span class="hint" id="steps-hint"></span>
         <div class="check" id="check" aria-live="polite"></div></div>
       <div class="field"><label for="in-status">상태</label>
         <select id="in-status"><option>초안</option><option ${s?.status === '중지' ? 'selected' : ''}>중지</option></select>
         <span class="hint">다음 실행에서 통과하면 검증됨으로 바뀌어요. 검증됨 시나리오의 단계를 고치면 초안으로 돌아가요.</span></div>
-      <details><summary class="hint">변환된 Maestro YAML 보기</summary><pre id="yaml"></pre></details>
+      <details id="yaml-box"><summary class="hint">변환된 Maestro YAML 보기</summary><pre id="yaml"></pre></details>
       <div class="actions"><button class="btn primary" id="btn-save">저장</button><button class="btn" type="button" id="btn-cancel">취소</button></div>
     </form>`;
+  const isYaml = () => $('#in-format').value === 'YAML';
   const check = () => {
-    const r = parseSteps($('#in-steps').value);
+    const yaml = isYaml();
+    $('#role-field').hidden = !yaml; $('#yaml-box').hidden = yaml;
+    $('#steps-hint').textContent = yaml ? '맨 위 appId 는 역할의 앱과 같아야 해요. 예: - runFlow: 04-home.yaml'
+      : '한 줄에 한 동작: 로그인 · 누르기 · 보임 · 안보임 · 입력 · 기다리기 · 스크롤 · 뒤로';
+    const r = yaml ? checkYaml($('#in-steps').value, $('#in-role').value) : parseSteps($('#in-steps').value);
     $('#check').innerHTML = r.errors.length ? r.errors.map(e => `<span class="err">${esc(e)}</span>`).join('') : `<span class="ok">형식이 맞아요 · 역할 ${r.role}</span>`;
-    $('#yaml').textContent = r.errors.length ? '형식 오류를 고치면 여기에 표시돼요' : toYaml($('#in-name').value, r.steps, APP_IDS[r.role]);
+    if (!yaml) $('#yaml').textContent = r.errors.length ? '형식 오류를 고치면 여기에 표시돼요' : toYaml($('#in-name').value, r.steps, APP_IDS[r.role]);
     $('#btn-save').disabled = r.errors.length > 0;
   };
-  $('#in-steps').oninput = check; $('#in-name').oninput = check; check();
+  // 형식이나 역할을 바꾸면 아직 손대지 않은 입력칸만 그 형식의 예시로 바꾼다
+  const sample = () => isYaml() ? `appId: ${APP_IDS[$('#in-role').value]}\n---\n- runFlow: 04-home.yaml\n` : '로그인 보호자\n';
+  let untouched = !s;
+  $('#in-steps').oninput = () => { untouched = false; check(); };
+  $('#in-format').onchange = $('#in-role').onchange = () => { if (untouched) $('#in-steps').value = sample(); check(); };
+  $('#in-name').oninput = check; check();
   $('#btn-cancel').onclick = () => { editing = false; renderAll(); };
   $('#form').onsubmit = async e => {
     e.preventDefault();
     const name = $('#in-by').value.trim();
     try { localStorage.setItem('qa-by', name); } catch {}
-    const body = JSON.stringify({ name: $('#in-name').value, steps: $('#in-steps').value, status: $('#in-status').value, updatedBy: name, baseRev: s?.rev ?? 0 });
+    const body = JSON.stringify({ name: $('#in-name').value, format: $('#in-format').value, role: $('#in-role').value, steps: $('#in-steps').value, status: $('#in-status').value, updatedBy: name, baseRev: s?.rev ?? 0 });
     try {
       const saved = await api(s ? `/api/scenarios/${s.id}` : '/api/scenarios', { method: s ? 'PUT' : 'POST', body });
       editing = false; selected = saved.id; await load(); toast('저장했어요');

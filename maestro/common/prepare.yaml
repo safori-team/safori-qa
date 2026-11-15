@@ -1,0 +1,19 @@
+# YAML 시나리오 앞에 붙는 준비 단계. 앱을 초기화하고, 새 OTA 번들이 있으면 받아 둔 뒤 로그인 화면에서 넘긴다.
+# 로그인은 시나리오(프론트 흐름은 subflows/login.yaml)가 직접 한다.
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    when:
+      visible: ".*(isn't responding|응답하지 않습니다).*"
+    commands:
+      - tapOn:
+          text: "Wait|기다리기"
+- extendedWaitUntil:
+    visible: "비밀번호|새 버전이 있어요"
+    timeout: 30000
+- runFlow: update.yaml
+- extendedWaitUntil:
+    visible: "비밀번호"
+    timeout: 60000
